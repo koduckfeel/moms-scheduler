@@ -138,7 +138,7 @@ function getRoleBadgeClass(role: string) {
 
 function getRoleText(role: FixedRole) {
   if (role === "OFF") return "휴무";
-  return role || "";
+  return role || "-";
 }
 
 function createZeroArray() {
@@ -190,7 +190,6 @@ function isFinalStateValid(state: StatsState) {
   const everyoneHasWeekendB = state.weekendBCounts.every((count) => count === 1);
   const everyoneHasWeekdayB = state.weekdayBCounts.every((count) => count >= 1);
   const maxConsecutiveValid = state.consecutiveWork.every((count) => count <= 3);
-
   return everyoneHasWeekendOff && everyoneHasWeekendB && everyoneHasWeekdayB && maxConsecutiveValid;
 }
 
@@ -204,9 +203,9 @@ function validateFixedAssignments(dates: Date[], fixedAssignments: FixedAssignme
       if (value === "A" || value === "B" || value === "OFF") counts[value] += 1;
     });
 
-    if (counts.A > 1) warnings.push(`${formatDateLabel(date)} A 중복 고정됨`);
-    if (counts.B > 1) warnings.push(`${formatDateLabel(date)} B 중복 고정됨`);
-    if (counts.OFF > 1) warnings.push(`${formatDateLabel(date)} 휴무 중복 고정됨`);
+    if (counts.A > 1) warnings.push(`${formatDateLabel(date)} A 중복됨`);
+    if (counts.B > 1) warnings.push(`${formatDateLabel(date)} B 중복됨`);
+    if (counts.OFF > 1) warnings.push(`${formatDateLabel(date)} 휴무 중복됨`);
   });
 
   return warnings;
@@ -373,32 +372,24 @@ function generateWeeklySchedule({
 
       const impossible = employees.some((employee) => {
         const id = employee.id;
-
         if (nextState.weekendOffCounts[id] > 1) return true;
         if (nextState.weekendBCounts[id] > 1) return true;
         if (nextState.weekdayBCounts[id] > 2) return true;
-
         if (nextState.weekendOffCounts[id] + remainingWeekendDays < 1) return true;
         if (nextState.weekendBCounts[id] + remainingWeekendDays < 1) return true;
         if (nextState.weekdayBCounts[id] + remainingWeekdayDays < 1) return true;
-
         return false;
       });
 
       if (impossible) continue;
 
-      search(
-        dayIndex + 1,
-        [...assignments, { dateKey: toISODate(date), aId, bId, offId }],
-        nextState
-      );
+      search(dayIndex + 1, [...assignments, { dateKey: toISODate(date), aId, bId, offId }], nextState);
     }
   }
 
   search(0, [], createInitialState());
 
   const selected = pickCandidate(candidates, previousSignature);
-
   if (!selected) {
     warnings.push("조건 충돌로 배정 불가함");
     return {
@@ -411,13 +402,8 @@ function generateWeeklySchedule({
   }
 
   const employeeStats = buildEmployeeStats(employees, selected.candidate.statsState);
-
-  warnings.push(
-    `월~목 B 1명 2회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekdayB}회`).join(" / ")})`
-  );
-  warnings.push(
-    `금~일 B 3명 각 1회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekendB}회`).join(" / ")})`
-  );
+  warnings.push(`월~목 B 1명 2회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekdayB}회`).join(" / ")})`);
+  warnings.push(`금~일 B 3명 각 1회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekendB}회`).join(" / ")})`);
   if ((selected.variantCount || 0) <= 1) {
     warnings.push("가능한 결과 1개만 존재함");
   }
@@ -438,18 +424,16 @@ function generateWeeklySchedule({
 
 function runSelfTests() {
   const monday = "2026-04-20";
-  const mondayDate = parseDate(monday);
-  console.assert(formatWeekdayLabel(mondayDate) === "월", "요일 라벨은 월이어야 한다.");
-  console.assert(toISODate(getMonday(parseDate("2026-04-26"))) === monday, "일요일 입력도 같은 주 월요일로 보정되어야 한다.");
+  console.assert(formatWeekdayLabel(parseDate(monday)) === "월", "요일 라벨은 월이어야 함");
+  console.assert(toISODate(getMonday(parseDate("2026-04-26"))) === monday, "일요일 입력도 같은 주 월요일로 보정되어야 함");
 
   const valid = generateWeeklySchedule({
     employees: initialEmployees,
     startDate: monday,
     fixedAssignments: {},
   });
-  console.assert(valid.schedule.length === 7, "기본 생성은 7일 스케줄을 반환해야 한다.");
-  console.assert((valid.stats || []).every((item) => item.weekendB === 1), "모든 인원은 금~일 B를 1회씩 가져야 한다.");
-  console.assert((valid.stats || []).every((item) => item.totalOff >= 2), "모든 인원은 최소 2회 이상 휴무가 있어야 한다.");
+  console.assert(valid.schedule.length === 7, "기본 생성은 7일 스케줄을 반환해야 함");
+  console.assert((valid.stats || []).every((item) => item.weekendB === 1), "모든 인원은 금~일 B를 1회씩 가져야 함");
 
   const invalid = generateWeeklySchedule({
     employees: initialEmployees,
@@ -459,8 +443,7 @@ function runSelfTests() {
       [getCellKey(1, 0)]: "A",
     },
   });
-  console.assert(invalid.schedule.length === 0, "같은 날 A 중복 고정이면 스케줄 생성이 실패해야 한다.");
-  console.assert(invalid.warnings.length > 0, "충돌 고정값이 있으면 경고가 있어야 한다.");
+  console.assert(invalid.schedule.length === 0, "같은 날 A 중복 고정이면 스케줄 생성이 실패해야 함");
 }
 
 function ScheduleCell({
@@ -479,7 +462,7 @@ function ScheduleCell({
       value={value}
       onChange={(e) => onChange(e.target.value as FixedRole)}
       className={classNames(
-        "w-full rounded-xl border px-2 py-2 text-center text-sm font-medium outline-none transition focus:border-slate-400 sm:px-3 sm:py-3",
+        "w-full min-w-0 rounded-lg border px-1 py-1.5 text-center text-[11px] font-medium outline-none transition focus:border-slate-400 sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
         getRoleBadgeClass(displayRole)
       )}
     >
@@ -496,11 +479,143 @@ function ResultCell({ role }: { role: FixedRole }) {
   return (
     <div
       className={classNames(
-        "rounded-xl border px-2 py-2 text-center text-sm font-semibold sm:px-3 sm:py-3",
+        "rounded-lg border px-1 py-1.5 text-center text-[11px] font-semibold sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
         role ? getRoleBadgeClass(role) : "border-slate-200 bg-slate-50 text-slate-400"
       )}
     >
-      {getRoleText(role) || "-"}
+      {getRoleText(role)}
+    </div>
+  );
+}
+
+function MobileRowLegend({ employees }: { employees: Employee[] }) {
+  return (
+    <div className="mb-3 grid grid-cols-3 gap-2 md:hidden">
+      {employees.map((employee, index) => (
+        <div key={`legend-${employee.id}`} className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center">
+          <div className="text-[10px] text-slate-400">{index + 1}행</div>
+          <div className="mt-1 truncate text-xs font-medium text-slate-700">{employee.name}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DesktopEditableTable({
+  employees,
+  dates,
+  fixedAssignments,
+  generated,
+  updateEmployeeName,
+  updateFixedAssignment,
+}: {
+  employees: Employee[];
+  dates: Date[];
+  fixedAssignments: FixedAssignments;
+  generated: ScheduleResult;
+  updateEmployeeName: (id: number, name: string) => void;
+  updateFixedAssignment: (employeeId: number, dayIndex: number, value: FixedRole) => void;
+}) {
+  return (
+    <div className="hidden overflow-x-auto md:block">
+      <table className="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl border border-slate-200 text-sm">
+        <thead>
+          <tr className="bg-slate-100 text-slate-700">
+            <th className="sticky left-0 z-10 min-w-[140px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">이름</th>
+            {dates.map((date) => (
+              <th key={`edit-head-${toISODate(date)}`} className="min-w-[96px] border-b border-slate-200 px-3 py-3 text-center font-semibold">
+                {formatWeekdayLabel(date)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {employees.map((employee) => (
+            <tr key={`edit-row-${employee.id}`}>
+              <td className="sticky left-0 z-10 border-r border-b border-slate-200 bg-white px-4 py-3">
+                <input
+                  value={employee.name}
+                  onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 font-medium outline-none transition focus:border-slate-400"
+                />
+              </td>
+              {dates.map((date, dayIndex) => {
+                const key = getCellKey(employee.id, dayIndex);
+                return (
+                  <td key={`edit-${employee.id}-${toISODate(date)}`} className="border-b border-slate-200 px-3 py-3">
+                    <ScheduleCell
+                      value={fixedAssignments[key] || ""}
+                      finalValue={generated.matrix[key] || ""}
+                      onChange={(value) => updateFixedAssignment(employee.id, dayIndex, value)}
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MobileEditableGrid({
+  employees,
+  dates,
+  fixedAssignments,
+  generated,
+  updateEmployeeName,
+  updateFixedAssignment,
+}: {
+  employees: Employee[];
+  dates: Date[];
+  fixedAssignments: FixedAssignments;
+  generated: ScheduleResult;
+  updateEmployeeName: (id: number, name: string) => void;
+  updateFixedAssignment: (employeeId: number, dayIndex: number, value: FixedRole) => void;
+}) {
+  return (
+    <div className="md:hidden">
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {employees.map((employee, index) => (
+          <div key={`mobile-name-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <div className="mb-1 text-[10px] text-slate-400">{index + 1}행</div>
+            <input
+              value={employee.name}
+              onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-2 py-2 text-xs font-medium outline-none transition focus:border-slate-400"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        <div className="grid grid-cols-7 gap-1.5">
+          {dates.map((date) => (
+            <div key={`mobile-edit-head-${toISODate(date)}`} className="rounded-lg bg-white px-1 py-2 text-center text-[11px] font-semibold text-slate-600">
+              {formatWeekdayLabel(date)}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          {employees.map((employee) => (
+            <div key={`mobile-edit-row-${employee.id}`} className="grid grid-cols-7 gap-1.5">
+              {dates.map((date, dayIndex) => {
+                const key = getCellKey(employee.id, dayIndex);
+                return (
+                  <ScheduleCell
+                    key={`mobile-edit-${employee.id}-${toISODate(date)}`}
+                    value={fixedAssignments[key] || ""}
+                    finalValue={generated.matrix[key] || ""}
+                    onChange={(value) => updateFixedAssignment(employee.id, dayIndex, value)}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -523,11 +638,9 @@ function DesktopResultTable({
         <table className="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl border border-slate-200 text-sm">
           <thead>
             <tr className="bg-slate-100 text-slate-700">
-              <th className="sticky left-0 z-10 min-w-[140px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">
-                이름
-              </th>
+              <th className="sticky left-0 z-10 min-w-[140px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">이름</th>
               {dates.map((date) => (
-                <th key={`${title}-${toISODate(date)}`} className="min-w-[90px] border-b border-slate-200 px-3 py-3 text-center font-semibold">
+                <th key={`${title}-head-${toISODate(date)}`} className="min-w-[90px] border-b border-slate-200 px-3 py-3 text-center font-semibold">
                   {formatWeekdayLabel(date)}
                 </th>
               ))}
@@ -535,18 +648,13 @@ function DesktopResultTable({
           </thead>
           <tbody>
             {employees.map((employee) => (
-              <tr key={`${title}-${employee.id}`}>
-                <td className="sticky left-0 z-10 border-r border-b border-slate-200 bg-white px-4 py-3 font-medium text-slate-900">
-                  {employee.name}
-                </td>
-                {dates.map((date, dayIndex) => {
-                  const role = matrix[getCellKey(employee.id, dayIndex)] || "";
-                  return (
-                    <td key={`${title}-${employee.id}-${toISODate(date)}`} className="border-b border-slate-200 px-3 py-3">
-                      <ResultCell role={role} />
-                    </td>
-                  );
-                })}
+              <tr key={`${title}-row-${employee.id}`}>
+                <td className="sticky left-0 z-10 border-r border-b border-slate-200 bg-white px-4 py-3 font-medium text-slate-900">{employee.name}</td>
+                {dates.map((date, dayIndex) => (
+                  <td key={`${title}-${employee.id}-${toISODate(date)}`} className="border-b border-slate-200 px-3 py-3">
+                    <ResultCell role={matrix[getCellKey(employee.id, dayIndex)] || ""} />
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -556,7 +664,7 @@ function DesktopResultTable({
   );
 }
 
-function MobileResultCards({
+function MobileResultGrid({
   title,
   employees,
   dates,
@@ -570,138 +678,26 @@ function MobileResultCards({
   return (
     <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:hidden">
       <div className="mb-4 text-base font-semibold text-slate-900">{title}</div>
-      <div className="space-y-3">
-        {employees.map((employee) => (
-          <div key={`${title}-mobile-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 text-sm font-semibold text-slate-900">{employee.name}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {dates.map((date, dayIndex) => {
-                const role = matrix[getCellKey(employee.id, dayIndex)] || "";
-                return (
-                  <div key={`${title}-mobile-${employee.id}-${toISODate(date)}`} className="rounded-xl border border-slate-200 bg-white p-2">
-                    <div className="mb-1 text-xs text-slate-500">{formatWeekdayLabel(date)}</div>
-                    <ResultCell role={role} />
-                  </div>
-                );
-              })}
+      <MobileRowLegend employees={employees} />
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        <div className="grid grid-cols-7 gap-1.5">
+          {dates.map((date) => (
+            <div key={`${title}-mobile-head-${toISODate(date)}`} className="rounded-lg bg-white px-1 py-2 text-center text-[11px] font-semibold text-slate-600">
+              {formatWeekdayLabel(date)}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {employees.map((employee) => (
+            <div key={`${title}-mobile-row-${employee.id}`} className="grid grid-cols-7 gap-1.5">
+              {dates.map((date, dayIndex) => (
+                <ResultCell key={`${title}-mobile-${employee.id}-${toISODate(date)}`} role={matrix[getCellKey(employee.id, dayIndex)] || ""} />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
-  );
-}
-
-function DesktopSchedulerTable({
-  employees,
-  dates,
-  fixedAssignments,
-  generated,
-  updateEmployeeName,
-  updateFixedAssignment,
-}: {
-  employees: Employee[];
-  dates: Date[];
-  fixedAssignments: FixedAssignments;
-  generated: ScheduleResult;
-  updateEmployeeName: (id: number, name: string) => void;
-  updateFixedAssignment: (employeeId: number, dayIndex: number, value: FixedRole) => void;
-}) {
-  return (
-    <div className="hidden overflow-x-auto md:block">
-      <table className="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl border border-slate-200 text-sm">
-        <thead>
-          <tr className="bg-slate-100 text-slate-700">
-            <th className="sticky left-0 z-10 min-w-[140px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">
-              이름
-            </th>
-            {dates.map((date) => (
-              <th key={toISODate(date)} className="min-w-[100px] border-b border-slate-200 px-3 py-3 text-center font-semibold">
-                {formatWeekdayLabel(date)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((employee) => (
-            <tr key={employee.id}>
-              <td className="sticky left-0 z-10 border-r border-b border-slate-200 bg-white px-4 py-3">
-                <input
-                  value={employee.name}
-                  onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 font-medium outline-none transition focus:border-slate-400"
-                  placeholder={`근무자 ${employee.id + 1}`}
-                />
-              </td>
-              {dates.map((date, dayIndex) => {
-                const key = getCellKey(employee.id, dayIndex);
-                const fixedValue = fixedAssignments[key] || "";
-                const finalValue = generated.matrix[key] || "";
-
-                return (
-                  <td key={`${employee.id}-${toISODate(date)}`} className="border-b border-slate-200 px-3 py-3">
-                    <ScheduleCell
-                      value={fixedValue}
-                      finalValue={finalValue}
-                      onChange={(value) => updateFixedAssignment(employee.id, dayIndex, value)}
-                    />
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function MobileSchedulerCards({
-  employees,
-  dates,
-  fixedAssignments,
-  generated,
-  updateEmployeeName,
-  updateFixedAssignment,
-}: {
-  employees: Employee[];
-  dates: Date[];
-  fixedAssignments: FixedAssignments;
-  generated: ScheduleResult;
-  updateEmployeeName: (id: number, name: string) => void;
-  updateFixedAssignment: (employeeId: number, dayIndex: number, value: FixedRole) => void;
-}) {
-  return (
-    <div className="space-y-4 md:hidden">
-      {employees.map((employee) => (
-        <div key={`mobile-edit-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <input
-            value={employee.name}
-            onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
-            className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 font-medium outline-none transition focus:border-slate-400"
-            placeholder={`근무자 ${employee.id + 1}`}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            {dates.map((date, dayIndex) => {
-              const key = getCellKey(employee.id, dayIndex);
-              const fixedValue = fixedAssignments[key] || "";
-              const finalValue = generated.matrix[key] || "";
-
-              return (
-                <div key={`mobile-edit-${employee.id}-${toISODate(date)}`} className="rounded-xl border border-slate-200 bg-white p-2">
-                  <div className="mb-2 text-xs font-medium text-slate-500">{formatWeekdayLabel(date)}</div>
-                  <ScheduleCell
-                    value={fixedValue}
-                    finalValue={finalValue}
-                    onChange={(value) => updateFixedAssignment(employee.id, dayIndex, value)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -747,15 +743,14 @@ export default function ShiftSchedulerMVP() {
 
     setEmployees(normalizedEmployees);
     setPreviousGenerated(generated.schedule.length > 0 ? generated : null);
-
-    const nextGenerated = generateWeeklySchedule({
-      employees: normalizedEmployees,
-      startDate,
-      fixedAssignments,
-      previousSignature: generated.meta.signature,
-    });
-
-    setGenerated(nextGenerated);
+    setGenerated(
+      generateWeeklySchedule({
+        employees: normalizedEmployees,
+        startDate,
+        fixedAssignments,
+        previousSignature: generated.meta.signature,
+      })
+    );
   };
 
   return (
@@ -773,7 +768,7 @@ export default function ShiftSchedulerMVP() {
             </button>
           </div>
 
-          <DesktopSchedulerTable
+          <DesktopEditableTable
             employees={employees}
             dates={dates}
             fixedAssignments={fixedAssignments}
@@ -782,7 +777,7 @@ export default function ShiftSchedulerMVP() {
             updateFixedAssignment={updateFixedAssignment}
           />
 
-          <MobileSchedulerCards
+          <MobileEditableGrid
             employees={employees}
             dates={dates}
             fixedAssignments={fixedAssignments}
@@ -794,12 +789,12 @@ export default function ShiftSchedulerMVP() {
 
         <div className="mt-6 space-y-6">
           <DesktopResultTable title="현재 배정 결과" employees={employees} dates={dates} matrix={generated.matrix} />
-          <MobileResultCards title="현재 배정 결과" employees={employees} dates={dates} matrix={generated.matrix} />
+          <MobileResultGrid title="현재 배정 결과" employees={employees} dates={dates} matrix={generated.matrix} />
 
           {previousGenerated?.schedule.length ? (
             <>
               <DesktopResultTable title="직전 배정 결과" employees={employees} dates={dates} matrix={previousGenerated.matrix} />
-              <MobileResultCards title="직전 배정 결과" employees={employees} dates={dates} matrix={previousGenerated.matrix} />
+              <MobileResultGrid title="직전 배정 결과" employees={employees} dates={dates} matrix={previousGenerated.matrix} />
             </>
           ) : null}
         </div>

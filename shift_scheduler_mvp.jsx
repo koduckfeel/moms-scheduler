@@ -479,7 +479,7 @@ function ScheduleCell({
       value={value}
       onChange={(e) => onChange(e.target.value as FixedRole)}
       className={classNames(
-        "w-full rounded-xl border px-2 py-2 text-center text-sm font-medium outline-none transition focus:border-slate-400 sm:px-3 sm:py-3",
+        "w-full min-w-0 rounded-lg border px-1 py-1.5 text-center text-[11px] font-medium outline-none transition focus:border-slate-400 sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
         getRoleBadgeClass(displayRole)
       )}
     >
@@ -493,6 +493,32 @@ function ScheduleCell({
 }
 
 function ResultCell({ role }: { role: FixedRole }) {
+  return (
+    <div
+      className={classNames(
+        "rounded-lg border px-1 py-1.5 text-center text-[11px] font-semibold sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
+        role ? getRoleBadgeClass(role) : "border-slate-200 bg-slate-50 text-slate-400"
+      )}
+    >
+      {getRoleText(role) || "-"}
+    </div>
+  );
+}
+
+function MobileCompactNameOrder({ employees }: { employees: Employee[] }) {
+  return (
+    <div className="mb-3 grid grid-cols-3 gap-2 md:hidden">
+      {employees.map((employee, index) => (
+        <div key={`mobile-order-${employee.id}`} className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center">
+          <div className="text-[10px] text-slate-400">{index + 1}행</div>
+          <div className="mt-1 truncate text-xs font-medium text-slate-700">{employee.name}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DesktopResultTable({ role }: { role: FixedRole }) {
   return (
     <div
       className={classNames(
@@ -570,21 +596,26 @@ function MobileResultCards({
   return (
     <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:hidden">
       <div className="mb-4 text-base font-semibold text-slate-900">{title}</div>
-      <div className="space-y-3">
-        {employees.map((employee) => (
-          <div key={`${title}-mobile-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 text-sm font-semibold text-slate-900">{employee.name}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {dates.map((date, dayIndex) => {
-                const role = matrix[getCellKey(employee.id, dayIndex)] || "";
-                return (
-                  <div key={`${title}-mobile-${employee.id}-${toISODate(date)}`} className="rounded-xl border border-slate-200 bg-white p-2">
-                    <div className="mb-1 text-xs text-slate-500">{formatWeekdayLabel(date)}</div>
-                    <ResultCell role={role} />
-                  </div>
-                );
-              })}
+      <MobileCompactNameOrder employees={employees} />
+      <div className="space-y-2">
+        <div className="grid grid-cols-7 gap-1.5">
+          {dates.map((date) => (
+            <div key={`${title}-head-${toISODate(date)}`} className="rounded-lg bg-slate-100 px-1 py-2 text-center text-[11px] font-semibold text-slate-600">
+              {formatWeekdayLabel(date)}
             </div>
+          ))}
+        </div>
+        {employees.map((employee) => (
+          <div key={`${title}-row-${employee.id}`} className="grid grid-cols-7 gap-1.5">
+            {dates.map((date, dayIndex) => {
+              const role = matrix[getCellKey(employee.id, dayIndex)] || "";
+              return (
+                <ResultCell
+                  key={`${title}-${employee.id}-${toISODate(date)}`}
+                  role={role}
+                />
+              );
+            })}
           </div>
         ))}
       </div>
@@ -673,34 +704,50 @@ function MobileSchedulerCards({
 }) {
   return (
     <div className="space-y-4 md:hidden">
-      {employees.map((employee) => (
-        <div key={`mobile-edit-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <input
-            value={employee.name}
-            onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
-            className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 font-medium outline-none transition focus:border-slate-400"
-            placeholder={`근무자 ${employee.id + 1}`}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            {dates.map((date, dayIndex) => {
-              const key = getCellKey(employee.id, dayIndex);
-              const fixedValue = fixedAssignments[key] || "";
-              const finalValue = generated.matrix[key] || "";
+      <div className="grid grid-cols-3 gap-2">
+        {employees.map((employee, index) => (
+          <div key={`mobile-name-${employee.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <div className="mb-1 text-[10px] text-slate-400">{index + 1}행</div>
+            <input
+              value={employee.name}
+              onChange={(e) => updateEmployeeName(employee.id, e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-2 py-2 text-xs font-medium outline-none transition focus:border-slate-400"
+              placeholder={`근무자 ${employee.id + 1}`}
+            />
+          </div>
+        ))}
+      </div>
 
-              return (
-                <div key={`mobile-edit-${employee.id}-${toISODate(date)}`} className="rounded-xl border border-slate-200 bg-white p-2">
-                  <div className="mb-2 text-xs font-medium text-slate-500">{formatWeekdayLabel(date)}</div>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        <div className="grid grid-cols-7 gap-1.5">
+          {dates.map((date) => (
+            <div key={`mobile-edit-head-${toISODate(date)}`} className="rounded-lg bg-white px-1 py-2 text-center text-[11px] font-semibold text-slate-600">
+              {formatWeekdayLabel(date)}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          {employees.map((employee) => (
+            <div key={`mobile-edit-row-${employee.id}`} className="grid grid-cols-7 gap-1.5">
+              {dates.map((date, dayIndex) => {
+                const key = getCellKey(employee.id, dayIndex);
+                const fixedValue = fixedAssignments[key] || "";
+                const finalValue = generated.matrix[key] || "";
+
+                return (
                   <ScheduleCell
+                    key={`mobile-edit-${employee.id}-${toISODate(date)}`}
                     value={fixedValue}
                     finalValue={finalValue}
                     onChange={(value) => updateFixedAssignment(employee.id, dayIndex, value)}
                   />
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
