@@ -4,10 +4,10 @@ import { AlertTriangle } from "lucide-react";
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const EMPLOYEE_COUNT = 3;
 const ROLE_OPTIONS = [
-  { value: "", label: "자동" },
+  { value: "", label: "-" },
   { value: "A", label: "A" },
   { value: "B", label: "B" },
-  { value: "OFF", label: "휴무" },
+  { value: "OFF", label: "X" },
 ] as const;
 const DAILY_ROLE_SETS = [
   ["A", "B", "OFF"],
@@ -137,7 +137,7 @@ function getRoleBadgeClass(role: string) {
 }
 
 function getRoleText(role: FixedRole) {
-  if (role === "OFF") return "휴무";
+  if (role === "OFF") return "X";
   return role || "-";
 }
 
@@ -205,7 +205,7 @@ function validateFixedAssignments(dates: Date[], fixedAssignments: FixedAssignme
 
     if (counts.A > 1) warnings.push(`${formatDateLabel(date)} A 중복됨`);
     if (counts.B > 1) warnings.push(`${formatDateLabel(date)} B 중복됨`);
-    if (counts.OFF > 1) warnings.push(`${formatDateLabel(date)} 휴무 중복됨`);
+    if (counts.OFF > 1) warnings.push(`${formatDateLabel(date)} X 중복됨`);
   });
 
   return warnings;
@@ -382,7 +382,6 @@ function generateWeeklySchedule({
       });
 
       if (impossible) continue;
-
       search(dayIndex + 1, [...assignments, { dateKey: toISODate(date), aId, bId, offId }], nextState);
     }
   }
@@ -404,9 +403,7 @@ function generateWeeklySchedule({
   const employeeStats = buildEmployeeStats(employees, selected.candidate.statsState);
   warnings.push(`월~목 B 1명 2회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekdayB}회`).join(" / ")})`);
   warnings.push(`금~일 B 3명 각 1회 배정됨 (${employeeStats.map((item) => `${item.name} ${item.weekendB}회`).join(" / ")})`);
-  if ((selected.variantCount || 0) <= 1) {
-    warnings.push("가능한 결과 1개만 존재함");
-  }
+  if ((selected.variantCount || 0) <= 1) warnings.push("가능한 결과 1개만 존재함");
 
   return {
     schedule: selected.candidate.schedule,
@@ -456,22 +453,26 @@ function ScheduleCell({
   onChange: (value: FixedRole) => void;
 }) {
   const displayRole = finalValue || value || "";
+  const displayText = getRoleText(value || finalValue || "");
 
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as FixedRole)}
-      className={classNames(
-        "w-full min-w-0 rounded-lg border px-1 py-1.5 text-center text-[11px] font-medium outline-none transition focus:border-slate-400 sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
-        getRoleBadgeClass(displayRole)
-      )}
-    >
-      {ROLE_OPTIONS.map((option) => (
-        <option key={option.value || "auto"} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className="w-full min-w-0">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as FixedRole)}
+        className={classNames(
+          "w-full min-w-0 rounded-lg border px-1 py-1.5 text-center text-[12px] font-semibold outline-none transition focus:border-slate-400 sm:rounded-xl sm:px-2 sm:py-2 sm:text-sm",
+          getRoleBadgeClass(displayRole)
+        )}
+      >
+        {ROLE_OPTIONS.map((option) => (
+          <option key={option.value || "auto"} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <div className="mt-1 text-center text-[10px] font-semibold text-slate-500 sm:hidden">{displayText}</div>
+    </div>
   );
 }
 
@@ -735,6 +736,10 @@ export default function ShiftSchedulerMVP() {
     });
   };
 
+  const clearFixedAssignments = () => {
+    setFixedAssignments({});
+  };
+
   const handleGenerate = () => {
     const normalizedEmployees = employees.map((employee) => ({
       ...employee,
@@ -759,13 +764,22 @@ export default function ShiftSchedulerMVP() {
         <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-lg font-semibold text-slate-900 sm:text-xl">주간 근무표</div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto"
-            >
-              자동 배정
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={clearFixedAssignments}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                초기화
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto"
+              >
+                자동 배정
+              </button>
+            </div>
           </div>
 
           <DesktopEditableTable
